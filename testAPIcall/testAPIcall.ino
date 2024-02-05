@@ -1,18 +1,11 @@
 /*
-  Rui Santos
-  Complete project details at Complete project details at https://RandomNerdTutorials.com/esp8266-nodemcu-http-get-open-weather-map-thingspeak-arduino/
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files.
-  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-  Code compatible with ESP8266 Boards Version 3.0.0 or above
-  (see in Tools > Boards > Boards Manager > ESP8266)
+  Complete project details: https://RandomNerdTutorials.com/esp8266-nodemcu-https-requests/
+  Based on the example created by Ivan Grokhotkov, 2015 (File > Examples > ESP8266WiFi > HTTPSRequests)
 */
 
 #include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
-//#include <WiFiClient.h>
 #include <WiFiClientSecure.h>
+#include <ESP8266HTTPClient.h>
 #include <Arduino_JSON.h>
 
 // Root certificate for howsmyssl.com
@@ -37,41 +30,40 @@ o/ufQJVtMVT8QtPHRh8jrdkPSHCa2XV4cdFyQzR1bldZwgJcJmApzyMZFo6IQ6XU
 5MsI+yMRQ+hDKXJioaldXgjUkK642M4UwtBV8ob2xJNDd2ZhwLnoQdeXeGADbkpy
 rqXRfboQnoZsG4q5WTP468SQvvG5
 -----END CERTIFICATE-----
-
 )CERT";
 
-
+// Replace with your network credentials
 const char* ssid = "timesink2";
 const char* password = "sweetpotato";
 
 // Create a list of certificates with the server certificate
 X509List cert(IRG_Root_X1);
-// Your Domain name with URL path or IP address with path
 
-
-// THE DEFAULT TIMER IS SET TO 10 SECONDS FOR TESTING PURPOSES
-// For a final application, check the API call limits per hour/minute to avoid getting blocked/banned
-unsigned long lastTime = 0;
-// Timer set to 10 minutes (600000)
-//unsigned long timerDelay = 600000;
-// Set timer to 10 seconds (10000)
-unsigned long timerDelay = 10000;
-
-String jsonBuffer;
+String payload;
+String url = "https://api-v3.mbta.com/predictions?filter[stop]=9147&filter[route]=134&include=stop,trip";
+String api_key = "033c7fd2b648432a84701196c7b94526";
 
 void setup() {
   Serial.begin(115200);
+  //Serial.setDebugOutput(true);
 
+  Serial.println();
+  Serial.println();
+  Serial.println();
+
+  //Connect to Wi-Fi
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  Serial.println("Connecting");
-  while(WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+  Serial.print("Connecting to WiFi ..");
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print('.');
+    delay(1000);
   }
 
   // Set time via NTP, as required for x.509 validation
   configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
-   Serial.print("Waiting for NTP time sync: ");
+
+  Serial.print("Waiting for NTP time sync: ");
   time_t now = time(nullptr);
   while (now < 8 * 3600 * 2) {
     delay(500);
@@ -83,77 +75,69 @@ void setup() {
   gmtime_r(&now, &timeinfo);
   Serial.print("Current time: ");
   Serial.print(asctime(&timeinfo));
-  Serial.println("");
-  Serial.print("Connected to WiFi network with IP Address: ");
-  Serial.println(WiFi.localIP());
-
 }
 
-
 void loop() {
-  // Send an HTTP GET request
   WiFiClientSecure client;
-  if ((millis() - lastTime) > timerDelay) {
-    // Check WiFi connection status
-    if(WiFi.status()== WL_CONNECTED){
-        client.setTrustAnchors(&cert);
+
+  // wait for WiFi connection
+  if ((WiFi.status() == WL_CONNECTED)) {
+
+    client.setTrustAnchors(&cert);
 
     HTTPClient https;
-      //String serverPath = "http://api.openweathermap.org/data/2.5/weather?q=" + city + "," + countryCode + "&APPID=" + openWeatherMapApiKey;
-      String serverPath = "https://api-v3.mbta.com/predictions?filter[stop]=9147&filter[route]=134&include=stop,trip";
+
+   // Serial.print("[HTTPS] begin...\n");
+    //if (https.begin(client, "https://www.howsmyssl.com/a/check")) {  // HTTPS
+    //  if (https.begin(client, "https://api-v3.mbta.com/predictions?filter[stop]=9147&filter[route]=134&include=stop,trip")) {
+    if (https.begin(client, url+"&api_key="+api_key)) {
+     // Serial.print("[HTTPS] GET...\n");
+      // start connection and send HTTP header
+      int httpCode = https.GET();
+
+      // httpCode will be negative on error
+      if (httpCode > 0) {
+        // HTTP header has been send and Server response header has been handled
+        Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
+
+        // file found at server
+        if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+           payload = https.getString();
+          Serial.println(payload);
+        }
+      } else {
+        Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
+      }
       
-      jsonBuffer = httpGETRequest(serverPath.c_str());
-      Serial.println(jsonBuffer);
-      JSONVar myObject = JSON.parse(jsonBuffer);
-  
+      JSONVar myObject = JSON.parse(payload);
       // JSON.typeof(jsonVar) can be used to get the type of the var
       if (JSON.typeof(myObject) == "undefined") {
         Serial.println("Parsing input failed!");
         return;
       }
-    
       Serial.print("JSON object = ");
       Serial.println(myObject);
-      Serial.print("Temperature: ");
-      Serial.println(myObject["main"]["temp"]);
-      Serial.print("Pressure: ");
-      Serial.println(myObject["main"]["pressure"]);
-      Serial.print("Humidity: ");
-      Serial.println(myObject["main"]["humidity"]);
-      Serial.print("Wind Speed: ");
-      Serial.println(myObject["wind"]["speed"]);
+      for (int x = 0; x < 5; x++) {
+        Serial.print(x);
+        String bustime = myObject["data"][x]["attributes"]["arrival_time"];
+        String busid = myObject["data"][x]["relationships"]["trip"]["data"]["id"];
+        if (bustime != null) {
+          Serial.println(bustime);
+          Serial.println(busid);
+        }
+      //Serial.println(myObject["data"][0]["attributes"]["arrival_time"]);
+      //Serial.print("Departure Time2: ");
+      //Serial.println(myObject["data"][1]["attributes"]["arrival_time"]);
+      }
+      
+      
+      https.end();
+    } else {
+      Serial.printf("[HTTPS] Unable to connect\n");
     }
-    else {
-      Serial.println("WiFi Disconnected");
-    }
-    lastTime = millis();
   }
-}
 
-String httpGETRequest(const char* serverName) {
-  //WiFiClient client;
-  WiFiClientSecure client;
-  HTTPClient https;
-    
-  // Your IP address with path or Domain name with URL path 
-  https.begin(client, serverName);
-  
-  // Send HTTP POST request
-  int httpResponseCode = https.GET();
-  
-  String payload = "{}"; 
-  
-  if (httpResponseCode>0) {
-    Serial.print("HTTP Response code: ");
-    Serial.println(httpResponseCode);
-    payload = https.getString();
-  }
-  else {
-    Serial.print("Error code: ");
-    Serial.println(httpResponseCode);
-  }
-  // Free resources
-  https.end();
-
-  return payload;
+  Serial.println();
+  Serial.println("Waiting 2min before the next round...");
+  delay(10000);
 }
