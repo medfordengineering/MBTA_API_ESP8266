@@ -1,12 +1,13 @@
-/*
-  Complete project details: https://RandomNerdTutorials.com/esp8266-nodemcu-https-requests/
-  Based on the example created by Ivan Grokhotkov, 2015 (File > Examples > ESP8266WiFi > HTTPSRequests)
-*/
 
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
 #include <ESP8266HTTPClient.h>
-#include <Arduino_JSON.h>
+#include <ArduinoJson.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+
+#define EST -18000
+#define EDT_OFFSET    1
 
 // Root certificate for howsmyssl.com
 const char IRG_Root_X1 [] PROGMEM = R"CERT(
@@ -36,16 +37,25 @@ rqXRfboQnoZsG4q5WTP468SQvvG5
 const char* ssid = "timesink2";
 const char* password = "sweetpotato";
 
+const long utcOffsetInSeconds = EST;
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
+
 // Create a list of certificates with the server certificate
 X509List cert(IRG_Root_X1);
 
-String payload;
-String url = "https://api-v3.mbta.com/predictions?filter[stop]=9147&filter[route]=134&include=stop,trip";
+String api_url = "https://api-v3.mbta.com/predictions?filter[stop]=9147&filter[route]=134&include=stop,trip";
 String api_key = "033c7fd2b648432a84701196c7b94526";
+
+String displaybuffer[200];
+
+// Converts hours and minutes into total minutes
+uint16_t total_minutes(uint8_t hrs, uint8_t mns) {
+  return (hrs * 60) + mns;
+};
 
 void setup() {
   Serial.begin(115200);
-  //Serial.setDebugOutput(true);
 
   Serial.println();
   Serial.println();
@@ -75,69 +85,124 @@ void setup() {
   gmtime_r(&now, &timeinfo);
   Serial.print("Current time: ");
   Serial.print(asctime(&timeinfo));
+  timeClient.begin();
 }
 
+//2024-02-05T17:46:48-05:00
 void loop() {
-  WiFiClientSecure client;
+    timeClient.update();
+    //uint8_t hrs = timeClient.getHours();
+    //uint8_t mns = timeClient.getMinutes();
+    //uint8_t scs = timeClient.getSeconds();
+   // uint16_t now_minutes = total_minutes(hrs, mns);
+    uint16_t now_minutes = total_minutes(timeClient.getHours(), timeClient.getMinutes());
+     //Serial.println(timeClient.getFormattedTime());
 
-  // wait for WiFi connection
+    //Serial.printf("%02d:%02d:%02d\n", hrs, mns, scs);
+  
   if ((WiFi.status() == WL_CONNECTED)) {
-
-    client.setTrustAnchors(&cert);
-
-    HTTPClient https;
-
-   // Serial.print("[HTTPS] begin...\n");
-    //if (https.begin(client, "https://www.howsmyssl.com/a/check")) {  // HTTPS
-    //  if (https.begin(client, "https://api-v3.mbta.com/predictions?filter[stop]=9147&filter[route]=134&include=stop,trip")) {
-    if (https.begin(client, url+"&api_key="+api_key)) {
-     // Serial.print("[HTTPS] GET...\n");
-      // start connection and send HTTP header
-      int httpCode = https.GET();
-
-      // httpCode will be negative on error
-      if (httpCode > 0) {
-        // HTTP header has been send and Server response header has been handled
-        Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
-
-        // file found at server
-        if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-           payload = https.getString();
-          Serial.println(payload);
-        }
+      WiFiClientSecure client;
+      HTTPClient https;
+      client.setTrustAnchors(&cert);
+      if(https.begin(client, api_url+"&api_key="+api_key)){
+          int httpCode = https.GET();
+          if (httpCode >0) {
+              if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+                  String payload = https.getString();
+                  //Serial.println("Response: " + payload);
+                  DynamicJsonDocument doc(14000);
+                  DeserializationError error = deserializeJson(doc, payload);
+                  if (error) {
+                    Serial.print("Error parsing JSON: ");
+                    Serial.println(error.c_str());
+                  } else {
+                   /// DynamicJsonDocument buses(2000);
+                    //buses["arrival"] = doc["data"][0]["attributes"]["arrival_time"];
+                    //buses["id"] = doc["data"][0]["relationships"]["trip"]["data"]["id"];
+                    //buses["head"] =  doc["included"][0]["attributes"]["headsign"];
+                    String head_sign = doc["included"][0]["attributes"]["headsign"];
+                    String arrival_time = doc["data"][0]["attributes"]["arrival_time"];
+                    String hours = arrival_time.substring(11,13);
+                    String minutes = arrival_time.substring(14,16);
+                    uint16_t arrival_minutes = total_minutes(hours.toInt(), minutes.toInt());
+                    Serial.printf("Arrival Minutes: %d\n", arrival_minutes);
+                    Serial.printf("Present Minutes: %d\n", now_minutes);
+                    Serial.printf("Time to arrival: %d\n", arrival_minutes - now_minutes);
+                    Serial.printf("Where: %s\n",head_sign);
+                    //displaybuffer = doc["included"][1]["attributes"]["headsign"] + ":" + doc["data"][0]["attributes"]["arrival_time"];
+                   //String output;
+                   // serializeJson(buses, output);
+                   // Serial.println(output);
+                   // Serial.println(arrival_time);
+                    //Serial.printf("time: %s\n", hours);
+                  
+                  }
+                }
       } else {
-        Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
+        Serial.printf("[HTTP] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
       }
-      
-      JSONVar myObject = JSON.parse(payload);
-      // JSON.typeof(jsonVar) can be used to get the type of the var
-      if (JSON.typeof(myObject) == "undefined") {
-        Serial.println("Parsing input failed!");
-        return;
-      }
-      Serial.print("JSON object = ");
-      Serial.println(myObject);
-      for (int x = 0; x < 5; x++) {
-        Serial.print(x);
-        String bustime = myObject["data"][x]["attributes"]["arrival_time"];
-        String busid = myObject["data"][x]["relationships"]["trip"]["data"]["id"];
-        if (bustime != null) {
-          Serial.println(bustime);
-          Serial.println(busid);
-        }
-      //Serial.println(myObject["data"][0]["attributes"]["arrival_time"]);
-      //Serial.print("Departure Time2: ");
-      //Serial.println(myObject["data"][1]["attributes"]["arrival_time"]);
-      }
-      
-      
+
       https.end();
     } else {
-      Serial.printf("[HTTPS] Unable to connect\n");
+      Serial.println("[HTTP] Unable to connect");
     }
   }
 
-  Serial.println();
-  Serial.println("Waiting 2min before the next round...");
-  delay(10000);
+  delay(6000);
+
 }
+
+ /*   if (https.begin(client, url+"&api_key="+api_key)) {
+
+    https.begin(client, url+"&api_key="+api_key);
+      int httpCode = https.GET();
+ payload = https.getString();
+          Serial.println(payload);
+          
+      // httpCode will be negative on error
+     // if (httpCode > 0) {
+        // HTTP header has been send and Server response header has been handled
+      //  Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
+
+        // file found at server
+       // if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+          
+      //  }
+      //}else {
+      //  Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
+     // }
+      
+      JsonObject& root = jsonBuffer.parseObject(payload);
+      
+      //JSONVar myObject = JSON.parse(payload);
+      // JSON.typeof(jsonVar) can be used to get the type of the var
+     // if (JSON.typeof(myObject) == "undefined") {
+      //  Serial.println("Parsing input failed!");
+      //  return;
+     // }
+     // Serial.print("JSON object = ");
+     // Serial.println(myObject);
+      for (int x = 0; x < 5; x++) {
+        Serial.print(x);
+        bus_time["arrival"] = myObject["data"][x]["attributes"]["arrival_time"];
+        bus_time["id"] = myObject["data"][x]["relationships"]["trip"]["data"]["id"];
+        String bustime = myObject["data"][x]["attributes"]["arrival_time"];
+        String busid = myObject["data"][x]["relationships"]["trip"]["data"]["id"];
+        
+      //Serial.println(myObject["data"][0]["attributes"]["arrival_time"]);
+      //Serial.print("Departure Time2: ");
+      //Serial.println(myObject["data"][1]["attributes"]["arrival_time"]);
+     // }
+      
+      
+      https.end();
+   // } else {
+   //   Serial.printf("[HTTPS] Unable to connect\n");
+   // }
+  }*/
+ // }
+ // Serial.println();
+ // Serial.println("Waiting 2min before the next round...");
+ // delay(10000);
+  
+//}
