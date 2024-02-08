@@ -5,9 +5,13 @@
 #include <ArduinoJson.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_NeoMatrix.h>
+#include <Adafruit_NeoPixel.h>
 
 #define EST -18000
 #define EDT_OFFSET    1
+#define PIXEL_PIN 15
 
 // Root certificate for howsmyssl.com
 const char IRG_Root_X1 [] PROGMEM = R"CERT(
@@ -33,9 +37,8 @@ rqXRfboQnoZsG4q5WTP468SQvvG5
 -----END CERTIFICATE-----
 )CERT";
 
-// Replace with your network credentials
-const char* ssid = "timesink2";
-const char* password = "sweetpotato";
+const char* ssid = "TP-Link_51CA";
+const char* password = "password";
 
 const long utcOffsetInSeconds = EST;
 WiFiUDP ntpUDP;
@@ -47,12 +50,19 @@ X509List cert(IRG_Root_X1);
 String api_url = "https://api-v3.mbta.com/predictions?filter[stop]=9147&filter[route]=134&include=stop,trip";
 String api_key = "033c7fd2b648432a84701196c7b94526";
 
-String displaybuffer[200];
+//String displaybuffer[100];
+
+Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(7, 7, PIXEL_PIN,
+  NEO_MATRIX_BOTTOM    + NEO_MATRIX_LEFT +
+  NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG,
+  NEO_GRB            + NEO_KHZ800);
 
 // Converts hours and minutes into total minutes
 uint16_t total_minutes(uint8_t hrs, uint8_t mns) {
   return (hrs * 60) + mns;
 };
+
+
 
 void setup() {
   Serial.begin(115200);
@@ -86,20 +96,22 @@ void setup() {
   Serial.print("Current time: ");
   Serial.print(asctime(&timeinfo));
   timeClient.begin();
+
+  matrix.begin();
+  matrix.setTextWrap(false);
+  matrix.setBrightness(40);
+    matrix.setTextColor(matrix.Color(255,0,0));
 }
 
-//2024-02-05T17:46:48-05:00
 void loop() {
-    timeClient.update();
-    //uint8_t hrs = timeClient.getHours();
-    //uint8_t mns = timeClient.getMinutes();
-    //uint8_t scs = timeClient.getSeconds();
-   // uint16_t now_minutes = total_minutes(hrs, mns);
-    uint16_t now_minutes = total_minutes(timeClient.getHours(), timeClient.getMinutes());
-     //Serial.println(timeClient.getFormattedTime());
 
-    //Serial.printf("%02d:%02d:%02d\n", hrs, mns, scs);
-  
+int len;
+    // Get time
+    timeClient.update();
+
+    // Convert now hours minutes to minutes
+    uint16_t now_minutes = total_minutes(timeClient.getHours(), timeClient.getMinutes());
+
   if ((WiFi.status() == WL_CONNECTED)) {
       WiFiClientSecure client;
       HTTPClient https;
@@ -109,32 +121,39 @@ void loop() {
           if (httpCode >0) {
               if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
                   String payload = https.getString();
-                  //Serial.println("Response: " + payload);
                   DynamicJsonDocument doc(14000);
                   DeserializationError error = deserializeJson(doc, payload);
                   if (error) {
                     Serial.print("Error parsing JSON: ");
                     Serial.println(error.c_str());
                   } else {
-                   /// DynamicJsonDocument buses(2000);
-                    //buses["arrival"] = doc["data"][0]["attributes"]["arrival_time"];
-                    //buses["id"] = doc["data"][0]["relationships"]["trip"]["data"]["id"];
-                    //buses["head"] =  doc["included"][0]["attributes"]["headsign"];
+                
                     String head_sign = doc["included"][0]["attributes"]["headsign"];
                     String arrival_time = doc["data"][0]["attributes"]["arrival_time"];
                     String hours = arrival_time.substring(11,13);
                     String minutes = arrival_time.substring(14,16);
+
+                    // Convert arrival hours minutes to minutes
                     uint16_t arrival_minutes = total_minutes(hours.toInt(), minutes.toInt());
-                    Serial.printf("Arrival Minutes: %d\n", arrival_minutes);
-                    Serial.printf("Present Minutes: %d\n", now_minutes);
-                    Serial.printf("Time to arrival: %d\n", arrival_minutes - now_minutes);
-                    Serial.printf("Where: %s\n",head_sign);
-                    //displaybuffer = doc["included"][1]["attributes"]["headsign"] + ":" + doc["data"][0]["attributes"]["arrival_time"];
-                   //String output;
-                   // serializeJson(buses, output);
-                   // Serial.println(output);
-                   // Serial.println(arrival_time);
-                    //Serial.printf("time: %s\n", hours);
+                    
+                    Serial.printf("Local time: %s\n", timeClient.getFormattedTime());
+                    String textdisplay = head_sign + "; " + String(arrival_minutes-now_minutes);
+                 // displaybuffer[100] = head_sign + "; " + String(arrival_minutes-now_minutes);
+                   //  matrix.print(head_sign);
+                            // displaybuffer = head_sign;
+                Serial.println(textdisplay);
+                  //Serial.printf("Long: %d\n", strlen(bus_update));
+
+                 // uint8_t y = strlen(textdisplay);
+                  for( len = 0; textdisplay[len] != '\0'; len++);
+                   for (int8_t x = matrix.width(); x > -(len * 6); x--) {
+                    matrix.fillScreen(0);
+                    matrix.setCursor(x, 0);
+               //   matrix.print(F(displaybuffer[100]));
+                  matrix.print(textdisplay);
+                   //  matrix.print(F("Wellington"));
+                    delay(50);
+                    matrix.show();
                   
                   }
                 }
@@ -147,8 +166,10 @@ void loop() {
       Serial.println("[HTTP] Unable to connect");
     }
   }
+  
+        }
 
-  delay(6000);
+  delay(1000);
 
 }
 
