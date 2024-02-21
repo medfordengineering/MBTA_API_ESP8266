@@ -243,15 +243,18 @@ void loop() {
                     textdisplay = head_sign + ": " + String(arrival_minutes);
                 
                     Serial.println(textdisplay);
-                 /*
+
+                    // Gets length of text display
                     for( len = 0; textdisplay[len] != '\0'; len++);
-                      for (int8_t x = matrix.width(); x > -(len * 6); x--) {
-                        matrix.fillScreen(0);
-                        matrix.setCursor(x, 0);
-                        matrix.print(textdisplay);
-                        delay(50);
-                        matrix.show();
-                      }*/
+
+                    // Prints text display on matrix
+                    for (int8_t x = matrix.width(); x > -(len * 6); x--) {
+                      matrix.fillScreen(0);
+                      matrix.setCursor(x, 0);
+                      matrix.print(textdisplay);
+                      delay(50);
+                      matrix.show();
+                    }
                   }
               } else {
                 Serial.printf("[HTTP] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
