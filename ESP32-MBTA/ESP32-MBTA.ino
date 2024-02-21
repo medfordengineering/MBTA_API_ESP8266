@@ -1,31 +1,22 @@
 
-// For making an HTTPS request
 #include <ESP8266WiFi.h>
+
 #include <WiFiClientSecure.h>
 #include <ESP8266HTTPClient.h>
-
-// For creating a webserver
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
-
-// For parsing JSON strings
 #include <ArduinoJson.h>
-
-// Getting access to a time client
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-
-// For driving the matrix display
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
+
+#define EST -18000
+#define EDT_OFFSET    1
 #define PIXEL_PIN 15
 
-// Setting up local time
-#define EST -18000
-const long utcOffsetInSeconds = EST;
-
-// Root certificate for api-v3.mbta.com
+// Root certificate for howsmyssl.com
 const char IRG_Root_X1 [] PROGMEM = R"CERT(
 -----BEGIN CERTIFICATE-----
 MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF
@@ -49,65 +40,25 @@ rqXRfboQnoZsG4q5WTP468SQvvG5
 -----END CERTIFICATE-----
 )CERT";
 
-// SSID and password for local router
 const char* ssid = "TP-Link_51CA";
 const char* password = "password";
 
-// Objects for getting time from time client
+const long utcOffsetInSeconds = EST;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
 // Create a list of certificates with the server certificate
 X509List cert(IRG_Root_X1);
 
-
-// URL and key for mbta api server
 String api_url = "https://api-v3.mbta.com/predictions?filter[stop]=9147&filter[route]=134&include=stop,trip";
 String api_key = "033c7fd2b648432a84701196c7b94526";
 
-// Server object
 AsyncWebServer server(80);
 
-// Set up the matrix display
 Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(7, 7, PIXEL_PIN,
   NEO_MATRIX_BOTTOM    + NEO_MATRIX_LEFT +
   NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG,
   NEO_GRB            + NEO_KHZ800);
-
-
-// Global time variables displayed on web server
-uint8_t hrs, mns, scs;
-bool daylightsavings = false;
-uint16_t arrival_minutes;
-
-// Required for web server
-const char* DST_FORM = "dst";
-bool newRequest = false;
-String textdisplay;
-
-// Processing variables on web server
-String processor(const String& var) {
-  
-  const char* dstState[] = {"EST", "EDT"};
-
-  // Display EST or EDT
-  if (var == "SET_DST") {
-    return dstState[daylightsavings];
-  }
-
-  // Display current time
-  if (var == "TIME") {
-    char buf[12];
-    sprintf(buf, "%02d:%02d:%02d", hrs, mns, scs);
-    return buf;
-  }
-
-  // Display destination and arrival time
-  if (var == "DESTINATION") {
-    return textdisplay;
-  }
-  return String();
-}
 
 // Converts hours and minutes into total minutes
 uint16_t total_minutes(uint8_t hrs, uint8_t mns) {
@@ -129,12 +80,10 @@ void setup() {
     Serial.print('.');
     delay(1000);
   }
-  
-  Serial.println("");
+Serial.println("");
   Serial.println("WiFi connected.");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
-  
   // Set time via NTP, as required for x.509 validation
   configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
 
@@ -152,67 +101,39 @@ void setup() {
   Serial.print(asctime(&timeinfo));
   timeClient.begin();
 
-  // Set up local file system access
-  if (!SPIFFS.begin()) {
+    if (!SPIFFS.begin()) {
     Serial.println("Failed to initialize SPIFFS");
     return;
   }
-  
-  // Route for root / web page
+    // Route for root / web page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest * request) {
-   // request->send(SPIFFS, "/index.html", "text/html");
-    request->send(SPIFFS, "/index.html", String(), false, processor);
+    Serial.println("html");
+    request->send(SPIFFS, "/index.html", "text/html");
+    //request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
   // Route to load style.css file
   server.on("/styles.css", HTTP_GET, [](AsyncWebServerRequest * request) {
+    Serial.println("css");
     request->send(SPIFFS, "/styles.css", "text/css");
   });
-
- // Process input from the web form
-  server.on("/", HTTP_POST, [] (AsyncWebServerRequest * request) {
-
-   int params = request->params();
-   for (int i = 0; i < params; i++) {
-      AsyncWebParameter* p = request->getParam(i);
-      if (p->isPost()) {
-        if (p->name() == DST_FORM) {
-          String dst = p->value().c_str();
-          daylightsavings = dst.toInt();
-          //Serial.println(daylightsavings);
-        }
-        newRequest = true;
-      }
-    }
-    request->send(SPIFFS, "/index.html", String(), false, processor);
-  });
-  
-  server.begin();
+    server.begin();
   Serial.println("HTTP server started");
 
   matrix.begin();
   matrix.setTextWrap(false);
   matrix.setBrightness(40);
-  matrix.setTextColor(matrix.Color(255,0,0));
+    matrix.setTextColor(matrix.Color(255,0,0));
 }
 
 void loop() {
 
-  int len;
-  
-  // Get time
-  timeClient.update();
-  hrs = timeClient.getHours();
-  mns = timeClient.getMinutes();
-  scs = timeClient.getSeconds();
+int len;
+    // Get time
+    timeClient.update();
 
-  if (daylightsavings == true) {
-    hrs +=1;
-  }
-
-  // Convert now hours minutes to minutes
-  //uint16_t now_minutes = total_minutes(timeClient.getHours(), timeClient.getMinutes());
-   uint16_t now_minutes = total_minutes(hrs, mns);
+    // Convert now hours minutes to minutes
+    uint16_t now_minutes = total_minutes(timeClient.getHours(), timeClient.getMinutes());
 
   if ((WiFi.status() == WL_CONNECTED)) {
       WiFiClientSecure client;
@@ -236,31 +157,34 @@ void loop() {
                     String minutes = arrival_time.substring(14,16);
 
                     // Convert arrival hours minutes to minutes
-                    arrival_minutes = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
+                    uint16_t arrival_minutes = total_minutes(hours.toInt(), minutes.toInt());
                     
                     Serial.printf("Local time: %s\n", timeClient.getFormattedTime());
-                    //String textdisplay = head_sign + "; " + String(arrival_minutes-now_minutes);
-                    textdisplay = head_sign + ": " + String(arrival_minutes);
+                    String textdisplay = head_sign + "; " + String(arrival_minutes-now_minutes);
                 
-                    Serial.println(textdisplay);
-                 /*
-                    for( len = 0; textdisplay[len] != '\0'; len++);
-                      for (int8_t x = matrix.width(); x > -(len * 6); x--) {
-                        matrix.fillScreen(0);
-                        matrix.setCursor(x, 0);
-                        matrix.print(textdisplay);
-                        delay(50);
-                        matrix.show();
-                      }*/
+                Serial.println(textdisplay);
+                 
+                  for( len = 0; textdisplay[len] != '\0'; len++);
+                   for (int8_t x = matrix.width(); x > -(len * 6); x--) {
+                    matrix.fillScreen(0);
+                    matrix.setCursor(x, 0);
+                    matrix.print(textdisplay);
+                    delay(50);
+                    matrix.show();
                   }
-              } else {
-                Serial.printf("[HTTP] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
-              }
-            https.end();
-          } else {
-        Serial.println("[HTTP] Unable to connect");
+                }
+      } else {
+        Serial.printf("[HTTP] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
       }
+
+      https.end();
+    } else {
+      Serial.println("[HTTP] Unable to connect");
     }
   }
-  //delay(1000);
+  
+        }
+
+  delay(1000);
+
 }
