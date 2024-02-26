@@ -238,6 +238,10 @@ void loop() {
                     // Convert arrival hours minutes to minutes
                     arrival_minutes = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
 
+                    // Account for rounding errors and better to over compensate than under
+                    arrival_minutes -= 1; 
+
+                    // MBTA api sometimes predicts negative arrival values.
                     if (arrival_minutes < 0) arrival_minutes = 0;
                     
                     Serial.printf("Local time: %s\n", timeClient.getFormattedTime());
