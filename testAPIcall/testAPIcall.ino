@@ -78,7 +78,7 @@ Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(7, 7, PIXEL_PIN,
 // Global time variables displayed on web server
 uint8_t hrs, mns, scs;
 bool daylightsavings = false;
-uint16_t arrival_minutes;
+int16_t arrival_minutes;
 
 // Required for web server
 const char* DST_FORM = "dst";
@@ -198,7 +198,7 @@ void setup() {
 
 void loop() {
 
-  int len;
+  uint8_t len;
   
   // Get time
   timeClient.update();
@@ -237,6 +237,8 @@ void loop() {
 
                     // Convert arrival hours minutes to minutes
                     arrival_minutes = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
+
+                    if (arrival_minutes < 0) arrival_minutes = 0;
                     
                     Serial.printf("Local time: %s\n", timeClient.getFormattedTime());
                     //String textdisplay = head_sign + "; " + String(arrival_minutes-now_minutes);
@@ -248,12 +250,12 @@ void loop() {
                     for( len = 0; textdisplay[len] != '\0'; len++);
 
                     // Prints text display on matrix
-                    for (int8_t x = matrix.width(); x > -(len * 6); x--) {
-                      matrix.fillScreen(0);
-                      matrix.setCursor(x, 0);
-                      matrix.print(textdisplay);
-                      delay(50);
-                      matrix.show();
+                    for (int16_t x = matrix.width(); x > -(len * 6); x--) {
+                        matrix.fillScreen(0);
+                        matrix.setCursor(x, 0);
+                        matrix.print(textdisplay);
+                        delay(50);
+                        matrix.show();
                     }
                   }
               } else {
