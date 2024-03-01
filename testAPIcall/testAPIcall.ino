@@ -1,3 +1,10 @@
+/* NOTES
+ *  Try to use HTTPS with eps32 and no cert
+ *  Figureout how to get longer strings in payload
+ *  Make sure to match time id with attribuite (headsign)id
+ *  Skip null times
+ */
+
 
 // For making an HTTPS request
 #include <ESP8266WiFi.h>
@@ -225,13 +232,15 @@ void loop() {
                   String payload = https.getString();
                   DynamicJsonDocument doc(14000);
                   DeserializationError error = deserializeJson(doc, payload);
+                  Serial.printf("payload: %s\n", payload);
                   if (error) {
                     Serial.print("Error parsing JSON: ");
                     Serial.println(error.c_str());
+                 //   String error_message = "
                   } else {
                 
-                    String head_sign = doc["included"][0]["attributes"]["headsign"];
-                    String arrival_time = doc["data"][0]["attributes"]["arrival_time"];
+                    String head_sign = doc["included"][1]["attributes"]["headsign"];
+                    String arrival_time = doc["data"][1]["attributes"]["arrival_time"];
                     String hours = arrival_time.substring(11,13);
                     String minutes = arrival_time.substring(14,16);
 
