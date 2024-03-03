@@ -4,8 +4,10 @@
 // For parsing JSON strings
 #include <ArduinoJson.h>
 
-const char* ssid = "TP-Link_51CA";
-const char* password = "password";
+//const char* ssid = "TP-Link_51CA";
+//const char* password = "password";
+const char* ssid = "timesink2";
+const char* password = "sweetpotato";
 
 // URL and key for mbta api server
 String api_url = "https://api-v3.mbta.com/predictions?filter[stop]=9147&filter[route]=134&include=stop,trip";
@@ -56,81 +58,22 @@ void setup() {
 }
 
 void loop() {
-  //WiFiClientSecure client;
-  WiFiClientSecure* client = new WiFiClientSecure;
-  HTTPClient https;
-  //client.setTrustAnchors(&cert);
-   client->setCACert(rootCACertificate);
-  if (https.begin(client, api_url + "&api_key=" + api_key)) {
-    int httpCode = https.GET();
-    if (httpCode > 0) {
-      if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-        String payload = https.getString();
-        DynamicJsonDocument doc(14000);
-        DeserializationError error = deserializeJson(doc, payload);
-        Serial.printf("payload: %s\n", payload);
-        if (error) {
-          Serial.print("Error parsing JSON: ");
-          Serial.println(error.c_str());
-          //   String error_message = "
-        } else {
 
-          String head_sign = doc["included"][1]["attributes"]["headsign"];
-          String arrival_time = doc["data"][1]["attributes"]["arrival_time"];
-          String hours = arrival_time.substring(11, 13);
-          String minutes = arrival_time.substring(14, 16);
-
-          // Convert arrival hours minutes to minutes
-          //arrival_minutes = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
-
-          //// Account for rounding errors and better to over compensate than under
-        .//  arrival_minutes -= 1;
-
-          // MBTA api sometimes predicts negative arrival values.
-         // if (arrival_minutes < 0) arrival_minutes = 0;
-
-          Serial.printf("Local time: %s\n", timeClient.getFormattedTime());
-          //String textdisplay = head_sign + "; " + String(arrival_minutes-now_minutes);
-          //textdisplay = head_sign + ": " + String(arrival_minutes);
-
-          Serial.println(textdisplay);
-
-          // Gets length of text display
-          for (len = 0; textdisplay[len] != '\0'; len++)
-            ;
-
-          // Prints text display on matrix
-         // for (int16_t x = matrix.width(); x > -(len * 6); x--) {
-         //   matrix.fillScreen(0);
-         //   matrix.setCursor(x, 0);
-         //   matrix.print(textdisplay);
-          //  delay(50);
-           // matrix.show();
-          //}
-        }
-      } else {
-        Serial.printf("[HTTP] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
-      }
-      https.end();
-    } else {
-      Serial.println("[HTTP] Unable to connect");
-    }
-  }
-}
-//delay(1000);
-/*
-  WiFiClientSecure* client = new WiFiClientSecure;
-  if (client) {
+  // WiFiClientSecure* client = new WiFiClientSecure;
+  WiFiClientSecure client;
+  if (true || client) {
     // set secure client with certificate
-    client->setCACert(rootCACertificate);
+    // client->setCACert(rootCACertificate);
+    client.setCACert(rootCACertificate);
+    // client.setTru
     //create an HTTPClient instance
     HTTPClient https;
     Serial.println(api_url + "&api_key=" + api_key);
 
     //Initializing an HTTPS communication using the secure client
     Serial.print("[HTTPS] begin...\n");
-    //if (https.begin(*client,  api_url+"&api_key="+api_key)) {  // HTTPS
-    if (https.begin(*client, api_url)) {  // HTTPS
+    if (https.begin(client,  api_url+"&api_key="+api_key)) {  // HTTPS
+    // if (https.begin(*client, api_url)) {  // HTTPS
       Serial.print("[HTTPS] GET...\n");
       // start connection and send HTTP header
       int httpCode = https.GET();
@@ -154,5 +97,6 @@ void loop() {
   }
   Serial.println();
   Serial.println("Waiting 2min before the next round...");
-  delay(12000);*/
+  // delete client;
+  delay(250);
 }
