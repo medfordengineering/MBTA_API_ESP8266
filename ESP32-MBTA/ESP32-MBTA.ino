@@ -5,6 +5,9 @@
 #include <WiFiUdp.h>
 #include <ArduinoJson.h>
 
+#define BUSID 0
+#define BUSTIME 1
+
 const char* ssid = "TP-Link_51CA";
 const char* password = "password";
 //const char* ssid = "timesink2";
@@ -50,7 +53,10 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 // Global time variables displayed on web server
 uint8_t hrs, mns, scs;
 bool daylightsavings = false;
-int16_t arrival_minutes;
+//int16_t arrival_minutes[5];
+int32_t bus_time_id[5][2];
+int32_t bus_head_id[5];
+
 String textdisplay;
 
 // Converts hours and minutes into total minutes
@@ -117,25 +123,50 @@ void loop() {
           //   String error_message = "
         } else {
 
+          for (int x = 0; x < 2; x++) {
+            String arrival_time = doc["data"][x]["attributes"]["arrival_time"];
+            String hours = arrival_time.substring(11, 13);
+            String minutes = arrival_time.substring(14, 16);
+
+            String trip_id = doc["data"][x]["relationships"]["trip"]["data"]["id"];
+
+            //arrival_minutes = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
+            bus_time_id[x][BUSID] = trip_id.toInt();
+            bus_time_id[x][BUSTIME] = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
+          }
+
+          for (int x = 0; x < 2; x++) {
+            bus_head_id[x] = doc["included"][x]["id"];
+          }
+
+          for (int x = 0; x < 2; x++) {
+            Serial.printf("IDT:%d TIME:%d IDH:%d\n", bus_time_id[x][BUSID],bus_time_id[x][BUSTIME], bus_head_id[x] );
+          }
+
+          /*
           String head_sign = doc["included"][0]["attributes"]["headsign"];
           String arrival_time = doc["data"][0]["attributes"]["arrival_time"];
+          String trip_idA = doc["data"][0]["relationships"]["trip"]["data"]["id"];
+          String trip_idB = doc["included"][0]["id"];
           String hours = arrival_time.substring(11, 13);
-          String minutes = arrival_time.substring(14, 16);
+          String minutes = arrival_time.substring(14, 16);*/
 
           // Convert arrival hours minutes to minutes
-          arrival_minutes = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
+          //arrival_minutes = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
 
           // Account for rounding errors and better to over compensate than under
-          arrival_minutes -= 1;
+          //arrival_minutes -= 1;
 
           // MBTA api sometimes predicts negative arrival values.
-          if (arrival_minutes < 0) arrival_minutes = 0;
+          //if (arrival_minutes < 0) arrival_minutes = 0;
 
           //Serial.printf("Local time: %s\n", timeClient.getFormattedTime());
           //String textdisplay = head_sign + "; " + String(arrival_minutes-now_minutes);
-          textdisplay = head_sign + ": " + String(arrival_minutes);
+          //textdisplay = head_sign + ": " + String(arrival_minutes);
 
           Serial.println(textdisplay);
+         // Serial.println(trip_idA);
+          //Serial.println(trip_idB);
         }
       } else {
         Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
