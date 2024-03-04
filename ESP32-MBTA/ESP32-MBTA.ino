@@ -123,7 +123,7 @@ void loop() {
           //   String error_message = "
         } else {
 
-          for (int x = 0; x < 2; x++) {
+          for (int x = 0; x < 4; x++) {
             String arrival_time = doc["data"][x]["attributes"]["arrival_time"];
             String hours = arrival_time.substring(11, 13);
             String minutes = arrival_time.substring(14, 16);
@@ -135,12 +135,13 @@ void loop() {
             bus_time_id[x][BUSTIME] = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
           }
 
-          for (int x = 0; x < 2; x++) {
+          for (int x = 0; x < 4; x++) {
             bus_head_id[x] = doc["included"][x]["id"];
           }
 
-          for (int x = 0; x < 2; x++) {
-            Serial.printf("IDT:%d TIME:%d IDH:%d\n", bus_time_id[x][BUSID],bus_time_id[x][BUSTIME], bus_head_id[x] );
+          for (int x = 0; x < 4; x++) {
+            String head = doc["included"][x]["attributes"]["headsign"];
+            Serial.printf("IDT:%d TIME:%d IDH:%d %s\n", bus_time_id[x][BUSID],bus_time_id[x][BUSTIME], bus_head_id[x], head);
           }
 
           /*
