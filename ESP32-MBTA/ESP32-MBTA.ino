@@ -1,13 +1,18 @@
 #include <WiFiClientSecure.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
-// For parsing JSON strings
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 #include <ArduinoJson.h>
 
-//const char* ssid = "TP-Link_51CA";
-//const char* password = "password";
-const char* ssid = "timesink2";
-const char* password = "sweetpotato";
+const char* ssid = "TP-Link_51CA";
+const char* password = "password";
+//const char* ssid = "timesink2";
+//const char* password = "sweetpotato";
+
+// Setting up local time
+#define EST -18000
+const long utcOffsetInSeconds = EST;
 
 // URL and key for mbta api server
 String api_url = "https://api-v3.mbta.com/predictions?filter[stop]=9147&filter[route]=134&include=stop,trip";
@@ -37,7 +42,21 @@ const char* rootCACertificate =
   "rqXRfboQnoZsG4q5WTP468SQvvG5\n"
   "-----END CERTIFICATE-----\n";
 
-//WiFiClientSecure client;
+// Objects for getting time from time client
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
+
+//String formattedDate;
+// Global time variables displayed on web server
+uint8_t hrs, mns, scs;
+bool daylightsavings = false;
+int16_t arrival_minutes;
+String textdisplay;
+
+// Converts hours and minutes into total minutes
+uint16_t total_minutes(uint8_t hrs, uint8_t mns) {
+  return (hrs * 60) + mns;
+};
 
 void setup() {
   Serial.begin(115200);
@@ -55,35 +74,75 @@ void setup() {
   Serial.println("WiFi connected.");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+
+  timeClient.begin();
 }
 
 void loop() {
+
+  while (!timeClient.update()) {
+    timeClient.forceUpdate();
+  }
+
+  hrs = timeClient.getHours();
+  mns = timeClient.getMinutes();
+  scs = timeClient.getSeconds();
+
+  uint16_t now_minutes = total_minutes(hrs, mns);
+
+  String formattedDate = timeClient.getFormattedDate();
+  Serial.println(formattedDate);
 
   WiFiClientSecure client;
   client.setCACert(rootCACertificate);
   HTTPClient https;
 
-  if (https.begin(client, api_url + "&api_key=" + api_key)) { 
-   
+  if (https.begin(client, api_url + "&api_key=" + api_key)) {
+
     int httpCode = https.GET();
     // httpCode will be negative on error
     if (httpCode > 0) {
       // HTTP header has been send and Server response header has been handled
-      Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
+      Serial.printf("[HTTPS]: %d\n", httpCode);
       // file found at server
       if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-        // print server response payload
+
         String payload = https.getString();
         Serial.println(payload);
-      }
-    } else {
-      Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
-    }
-    https.end();
-  }
+        DynamicJsonDocument doc(14000);
+        DeserializationError error = deserializeJson(doc, payload);
+        if (error) {
+          Serial.print("Error parsing JSON: ");
+          Serial.println(error.c_str());
+          //   String error_message = "
+        } else {
 
-  Serial.println();
-  // Serial.println("Waiting 2min before the next round...");
-  // delete client;
-  delay(3000);
+          String head_sign = doc["included"][0]["attributes"]["headsign"];
+          String arrival_time = doc["data"][0]["attributes"]["arrival_time"];
+          String hours = arrival_time.substring(11, 13);
+          String minutes = arrival_time.substring(14, 16);
+
+          // Convert arrival hours minutes to minutes
+          arrival_minutes = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
+
+          // Account for rounding errors and better to over compensate than under
+          arrival_minutes -= 1;
+
+          // MBTA api sometimes predicts negative arrival values.
+          if (arrival_minutes < 0) arrival_minutes = 0;
+
+          //Serial.printf("Local time: %s\n", timeClient.getFormattedTime());
+          //String textdisplay = head_sign + "; " + String(arrival_minutes-now_minutes);
+          textdisplay = head_sign + ": " + String(arrival_minutes);
+
+          Serial.println(textdisplay);
+        }
+      } else {
+        Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
+      }
+      https.end();
+    }
+    Serial.println();
+    delay(3000);
+  }
 }
