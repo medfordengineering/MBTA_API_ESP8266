@@ -128,16 +128,38 @@ void loop() {
           //   String error_message = "
         } else {
 
-          for (int x = 0; x < 4; x++) {
-            String departure_time = doc["data"][x]["attributes"]["departure_time"];  //Check for departure since arrival might be void if the bus is not going to drop off
+          //for (int x = 0; x < 4; x++) {
+          uint8_t x = 0;
+          do {
+            //Check for departure since arrival might be void if the bus is not going to drop off
+            String departure_time = doc["data"][x]["attributes"]["departure_time"];
             String hours = departure_time.substring(11, 13);
             String minutes = departure_time.substring(14, 16);
+            // Time till next bus arrives in minutes
+            int16_t arrival_minutes = total_minutes(hours.toInt(), minutes.toInt()) - now_minutes;
+            // Store arrival time
+            bus_time_id[x][BUSTIME] = arrival_minutes;
 
+            // ID of bus arriving in arrival_minutes
             String trip_id = doc["data"][x]["relationships"]["trip"]["data"]["id"];
-
+            // Store ID
             bus_time_id[x][BUSID] = trip_id.toInt();
-            bus_time_id[x][BUSTIME] = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
+
+            //bus_time_id[x][BUSTIME] = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
+            // bus_time_id[x][BUSTIME] = arrival_minutes;
+          } while (bus_time_id[x++][BUSID] != 0); // Check to see if bus ID is zero indicating no more busses scheduled
+
+          for (int i = 0; i < x; i++) {
+            for (int j = 0; j < x; j++) {
+              String id = doc["included"][j]["id"];
+              if (bus_time_id[i][BUSID] == id.toInt()) {
+                String head = doc["included"][j]["attributes"]["headsign"];
+                const char* a = head.c_str();  //Convert String to C-string required for printf
+                Serial.printf("IDT:%d TIME:%d IDH:%d %s\n", bus_time_id[i][BUSID], bus_time_id[i][BUSTIME], bus_head_id[j], a);
+              }
+            }
           }
+          /*
           for (int y = 0; y < 4; y++) {
             for (int x = 0; x < 4; x++) {
               String id = doc["included"][x]["id"];
@@ -146,10 +168,9 @@ void loop() {
                 const char* a = head.c_str();  //Convert String to C-string required for printf
                 Serial.printf("IDT:%d TIME:%d IDH:%d %s\n", bus_time_id[y][BUSID], bus_time_id[y][BUSTIME], bus_head_id[x], a);
               }
-             // bus_head_id[x] = doc["incuded"][x]["id"];
-            }
-          }
-/*
+            }*/
+          // }
+          /*
           for (int x = 0; x < 4; x++) {
             bus_head_id[x] = doc["included"][x]["id"];
           }
