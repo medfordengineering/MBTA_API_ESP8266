@@ -1,3 +1,8 @@
+/*
+set for departure time
+link ids for buses
+*/
+
 #include <WiFiClientSecure.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -124,25 +129,37 @@ void loop() {
         } else {
 
           for (int x = 0; x < 4; x++) {
-            String arrival_time = doc["data"][x]["attributes"]["arrival_time"];
-            String hours = arrival_time.substring(11, 13);
-            String minutes = arrival_time.substring(14, 16);
+            String departure_time = doc["data"][x]["attributes"]["departure_time"];  //Check for departure since arrival might be void if the bus is not going to drop off
+            String hours = departure_time.substring(11, 13);
+            String minutes = departure_time.substring(14, 16);
 
             String trip_id = doc["data"][x]["relationships"]["trip"]["data"]["id"];
 
-            //arrival_minutes = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
             bus_time_id[x][BUSID] = trip_id.toInt();
             bus_time_id[x][BUSTIME] = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
           }
-
+          for (int y = 0; y < 4; y++) {
+            for (int x = 0; x < 4; x++) {
+              String id = doc["included"][x]["id"];
+              if (bus_time_id[y][BUSID] == id.toInt()) {
+                String head = doc["included"][x]["attributes"]["headsign"];
+                const char* a = head.c_str();  //Convert String to C-string required for printf
+                Serial.printf("IDT:%d TIME:%d IDH:%d %s\n", bus_time_id[y][BUSID], bus_time_id[y][BUSTIME], bus_head_id[x], a);
+              }
+             // bus_head_id[x] = doc["incuded"][x]["id"];
+            }
+          }
+/*
           for (int x = 0; x < 4; x++) {
             bus_head_id[x] = doc["included"][x]["id"];
           }
 
+
           for (int x = 0; x < 4; x++) {
             String head = doc["included"][x]["attributes"]["headsign"];
-            Serial.printf("IDT:%d TIME:%d IDH:%d %s\n", bus_time_id[x][BUSID],bus_time_id[x][BUSTIME], bus_head_id[x], head);
-          }
+            const char* a = head.c_str();  //Convert String to C-string required for printf
+            Serial.printf("IDT:%d TIME:%d IDH:%d %s\n", bus_time_id[x][BUSID], bus_time_id[x][BUSTIME], bus_head_id[x], a);
+          }*/
 
           /*
           String head_sign = doc["included"][0]["attributes"]["headsign"];
@@ -166,7 +183,7 @@ void loop() {
           //textdisplay = head_sign + ": " + String(arrival_minutes);
 
           Serial.println(textdisplay);
-         // Serial.println(trip_idA);
+          // Serial.println(trip_idA);
           //Serial.println(trip_idB);
         }
       } else {
