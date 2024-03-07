@@ -10,6 +10,12 @@ link ids for buses
 #include <WiFiUdp.h>
 #include <ArduinoJson.h>
 
+// For driving the matrix display
+#include <Adafruit_GFX.h>
+#include <Adafruit_NeoMatrix.h>
+#include <Adafruit_NeoPixel.h>
+#define PIXEL_PIN 10
+
 #define BUSID 0
 #define BUSTIME 1
 
@@ -54,6 +60,11 @@ const char* rootCACertificate =
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
+AsyncWebServer server(80);
+
+// Set up the matrix display
+Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(7, 7, PIXEL_PIN, NEO_MATRIX_BOTTOM + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG, NEO_GRB + NEO_KHZ800);
+
 //String formattedDate;
 // Global time variables displayed on web server
 uint8_t hrs, mns, scs;
@@ -87,6 +98,11 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   timeClient.begin();
+
+  matrix.begin();
+  matrix.setTextWrap(false);
+  matrix.setBrightness(40);
+  matrix.setTextColor(matrix.Color(255, 0, 0));
 }
 
 void loop() {
@@ -128,7 +144,6 @@ void loop() {
           //   String error_message = "
         } else {
 
-          //for (int x = 0; x < 4; x++) {
           uint8_t x = 0;
           do {
             //Check for departure since arrival might be void if the bus is not going to drop off
@@ -145,10 +160,10 @@ void loop() {
             // Store ID
             bus_time_id[x][BUSID] = trip_id.toInt();
 
-            //bus_time_id[x][BUSTIME] = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
-            // bus_time_id[x][BUSTIME] = arrival_minutes;
-          } while (bus_time_id[x++][BUSID] != 0); // Check to see if bus ID is zero indicating no more busses scheduled
 
+          } while (bus_time_id[x++][BUSID] != 0);  // Check to see if bus ID is zero indicating no more busses scheduled
+
+          //Match IDs from arrival times with IDs from head signs
           for (int i = 0; i < x; i++) {
             for (int j = 0; j < x; j++) {
               String id = doc["included"][j]["id"];
@@ -159,53 +174,6 @@ void loop() {
               }
             }
           }
-          /*
-          for (int y = 0; y < 4; y++) {
-            for (int x = 0; x < 4; x++) {
-              String id = doc["included"][x]["id"];
-              if (bus_time_id[y][BUSID] == id.toInt()) {
-                String head = doc["included"][x]["attributes"]["headsign"];
-                const char* a = head.c_str();  //Convert String to C-string required for printf
-                Serial.printf("IDT:%d TIME:%d IDH:%d %s\n", bus_time_id[y][BUSID], bus_time_id[y][BUSTIME], bus_head_id[x], a);
-              }
-            }*/
-          // }
-          /*
-          for (int x = 0; x < 4; x++) {
-            bus_head_id[x] = doc["included"][x]["id"];
-          }
-
-
-          for (int x = 0; x < 4; x++) {
-            String head = doc["included"][x]["attributes"]["headsign"];
-            const char* a = head.c_str();  //Convert String to C-string required for printf
-            Serial.printf("IDT:%d TIME:%d IDH:%d %s\n", bus_time_id[x][BUSID], bus_time_id[x][BUSTIME], bus_head_id[x], a);
-          }*/
-
-          /*
-          String head_sign = doc["included"][0]["attributes"]["headsign"];
-          String arrival_time = doc["data"][0]["attributes"]["arrival_time"];
-          String trip_idA = doc["data"][0]["relationships"]["trip"]["data"]["id"];
-          String trip_idB = doc["included"][0]["id"];
-          String hours = arrival_time.substring(11, 13);
-          String minutes = arrival_time.substring(14, 16);*/
-
-          // Convert arrival hours minutes to minutes
-          //arrival_minutes = (total_minutes(hours.toInt(), minutes.toInt()) - now_minutes);
-
-          // Account for rounding errors and better to over compensate than under
-          //arrival_minutes -= 1;
-
-          // MBTA api sometimes predicts negative arrival values.
-          //if (arrival_minutes < 0) arrival_minutes = 0;
-
-          //Serial.printf("Local time: %s\n", timeClient.getFormattedTime());
-          //String textdisplay = head_sign + "; " + String(arrival_minutes-now_minutes);
-          //textdisplay = head_sign + ": " + String(arrival_minutes);
-
-          Serial.println(textdisplay);
-          // Serial.println(trip_idA);
-          //Serial.println(trip_idB);
         }
       } else {
         Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
