@@ -14,7 +14,7 @@ link ids for buses
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
-#define PIXEL_PIN 10
+#define PIXEL_PIN 6
 
 #define BUSID 0
 #define BUSTIME 1
@@ -60,10 +60,12 @@ const char* rootCACertificate =
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
-AsyncWebServer server(80);
+//AsyncWebServer server(80);
 
 // Set up the matrix display
-Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(7, 7, PIXEL_PIN, NEO_MATRIX_BOTTOM + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(7, 7, PIXEL_PIN,
+                                               NEO_MATRIX_BOTTOM + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG,
+                                               NEO_GRB + NEO_KHZ800);
 
 //String formattedDate;
 // Global time variables displayed on web server
@@ -106,6 +108,9 @@ void setup() {
 }
 
 void loop() {
+
+  uint8_t len;
+
 
   while (!timeClient.update()) {
     timeClient.forceUpdate();
@@ -171,6 +176,26 @@ void loop() {
                 String head = doc["included"][j]["attributes"]["headsign"];
                 const char* a = head.c_str();  //Convert String to C-string required for printf
                 Serial.printf("IDT:%d TIME:%d IDH:%d %s\n", bus_time_id[i][BUSID], bus_time_id[i][BUSTIME], bus_head_id[j], a);
+                textdisplay = head + ": " + String(bus_time_id[i][BUSTIME]);
+                // Gets length of text display
+                for (len = 0; textdisplay[len] != '\0'; len++)
+                  ;
+                Serial.println(len);
+                Serial.println(textdisplay);
+                //String test = textDisplay;
+                
+               // len = 42;
+                // Prints text display on matrix
+                for (int16_t x = matrix.width(); x > -(len * 6); x--) {
+                  //for (int16_t x = 34; x > 0; x--) {
+                  matrix.fillScreen(0);
+                  matrix.setCursor(x, 0);
+                  //matrix.print(textdisplay);
+                  //matrix.print("Wel");
+                  matrix.print(textdisplay);
+                  delay(50);
+                  matrix.show();
+                }
               }
             }
           }
