@@ -177,7 +177,7 @@ void loop() {
                 const char* a = head.c_str();  //Convert String to C-string required for printf
                 //Serial.printf("IDT:%d TIME:%d IDH:%d %s\n", bus_time_id[i][BUSID], bus_time_id[i][BUSTIME], bus_head_id[j], a);
                 Serial.printf("IDT:%d TIME:%d IDH:%d %s\n", bus_time_id[i][BUSID], bus_time_id[i][BUSTIME], id.toInt(), a);
-                textdisplay = head + ": " + String(bus_time_id[i][BUSTIME]);
+                textdisplay = head + ':' + String(bus_time_id[i][BUSTIME]);
                 // Gets length of text display
                 for (len = 0; textdisplay[len] != '\0'; len++)
                   ;
@@ -198,6 +198,7 @@ void loop() {
                   delay(50);
                   matrix.show();
                 }
+                delay(1000);
               }
             }
           }
@@ -208,6 +209,6 @@ void loop() {
       https.end();
     }
     Serial.println();
-    delay(3000);
+    //delay(3000);
   }
 }
