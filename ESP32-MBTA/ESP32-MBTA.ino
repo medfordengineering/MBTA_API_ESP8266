@@ -26,7 +26,9 @@ const char* password = "password";
 
 // Setting up local time
 #define EST -18000
+#define EDT_OFFSET 1
 const long utcOffsetInSeconds = EST;
+bool dst_state = true;
 
 // URL and key for mbta api server
 String api_url = "https://api-v3.mbta.com/predictions?filter[stop]=9147&filter[route]=134&include=stop,trip";
@@ -120,6 +122,8 @@ void loop() {
   mns = timeClient.getMinutes();
   scs = timeClient.getSeconds();
 
+  if (dst_state == true) hrs += EDT_OFFSET;
+
   uint16_t now_minutes = total_minutes(hrs, mns);
 
   String formattedDate = timeClient.getFormattedDate();
@@ -181,13 +185,8 @@ void loop() {
                 // Gets length of text display
                 for (len = 0; textdisplay[len] != '\0'; len++)
                   ;
-               // Serial.println(len);
-                //Serial.println(textdisplay);
-                //String test = textDisplay;
                 
-               // len = 42;
                 // Prints text display on matrix
-                
                 for (int16_t x = matrix.width(); x > -(len * 6); x--) {
                   //for (int16_t x = 34; x > 0; x--) {
                   matrix.fillScreen(0);
