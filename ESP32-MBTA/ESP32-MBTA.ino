@@ -14,10 +14,13 @@ link ids for buses
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
+
 #define PIXEL_PIN 6
+//#define PIXEL_PIN 21
 
 #define BUSID 0
 #define BUSTIME 1
+#define MAXNUM_BUSES 8
 
 // TEST JSON STRINGS
 
@@ -82,8 +85,8 @@ Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(7, 7, PIXEL_PIN,
 uint8_t hrs, mns, scs;
 bool daylightsavings = false;
 //int16_t arrival_minutes[5];
-int32_t bus_time_id[5][2];
-int32_t bus_head_id[5];
+int32_t bus_time_id[MAXNUM_BUSES][2];
+int32_t bus_head_id[MAXNUM_BUSES];
 
 String textdisplay;
 
@@ -120,7 +123,6 @@ void setup() {
 void loop() {
 
   uint8_t len;
-
 
   while (!timeClient.update()) {
     timeClient.forceUpdate();
