@@ -15,12 +15,22 @@ link ids for buses
 #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
 
-#define PIXEL_PIN 6
+#define PIXEL_PIN 16
 //#define PIXEL_PIN 21
 
 #define BUSID 0
 #define BUSTIME 1
 #define MAXNUM_BUSES 8
+
+#define MAR 3
+#define NOV 11
+#define SUN 0
+#define WEEK 7
+#define NOTSET 3
+#define MAGIC_NUMBER 8
+
+#define EST -18000
+#define EDT -14400
 
 // TEST JSON STRINGS
 
@@ -40,6 +50,7 @@ const char* password = "password";
 #define EDT_OFFSET 1
 const long utcOffsetInSeconds = EST;
 bool dst_state = true;
+uint8_t est_state = NOTSET;
 
 // URL and key for mbta api server
 String api_url = "https://api-v3.mbta.com/predictions?filter[stop]=9147&filter[route]=134&include=stop,trip";
@@ -131,6 +142,34 @@ void loop() {
   hrs = timeClient.getHours();
   mns = timeClient.getMinutes();
   scs = timeClient.getSeconds();
+
+    // Day of week, month and day
+  uint8_t dayofweek = timeClient.getDay();
+  String formattedDate = timeClient.getFormattedDate();
+  uint8_t splitDash = formattedDate.indexOf("-") + 1;
+  String mnt = formattedDate.substring(splitDash, splitDash + 2);
+  splitDash += 3;
+  String dte = formattedDate.substring(splitDash, splitDash + 2);
+
+  uint8_t month = mnt.toInt();
+  uint8_t day = dte.toInt();
+
+
+  uint8_t previousSunday = day - dayofweek;
+
+  if (((month > MAR) && (month < NOV)) || ((month == MAR) && (previousSunday >= MAGIC_NUMBER)) || ((month == MAR) && (day > WEEK * 2)) || ((month == NOV) && (previousSunday < 1))) {
+    if (est_state == true)  {
+      timeClient.setTimeOffset(EDT);
+      est_state = false;
+    }
+}
+else {
+  if (est_state == false)  {
+    timeClient.setTimeOffset(EST);
+    est_state = true;
+  }
+}
+
 
   if (dst_state == true) hrs += EDT_OFFSET;
 
