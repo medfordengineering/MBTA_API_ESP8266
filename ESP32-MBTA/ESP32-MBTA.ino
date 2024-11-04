@@ -15,22 +15,21 @@ link ids for buses
 #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
 
-#define PIXEL_PIN 16
+#define PIXEL_PIN 6
 //#define PIXEL_PIN 21
 
+// Definitions for
 #define BUSID 0
 #define BUSTIME 1
 #define MAXNUM_BUSES 8
 
+// Definitions for setting DST
 #define MAR 3
 #define NOV 11
 #define SUN 0
 #define WEEK 7
 #define NOTSET 3
 #define MAGIC_NUMBER 8
-
-#define EST -18000
-#define EDT -14400
 
 // TEST JSON STRINGS
 
@@ -40,17 +39,19 @@ link ids for buses
 
 //String payload = "{\"data\":[{\"attributes\":{\"arrival_time\":null,\"arrival_uncertainty\":null,\"departure_time\":\"2024-03-14T14:30:00-04:00\",\"departure_uncertainty\":300,\"direction_id\":1,\"revenue\":\"REVENUE\",\"schedule_relationship\":null,\"status\":null,\"stop_sequence\":1},\"id\":\"prediction-60314982-9147-1\",\"relationships\":{\"route\":{\"data\":{\"id\":\"134\",\"type\":\"route\"}},\"stop\":{\"data\":{\"id\":\"9147\",\"type\":\"stop\"}},\"trip\":{\"data\":{\"id\":\"60314982\",\"type\":\"trip\"}},\"vehicle\":{\"data\":null}},\"type\":\"prediction\"},{\"attributes\":{\"arrival_time\":null,\"arrival_uncertainty\":null,\"departure_time\":\"2024-03-14T14:45:00-04:00\",\"departure_uncertainty\":300,\"direction_id\":1,\"revenue\":\"REVENUE\",\"schedule_relationship\":null,\"status\":null,\"stop_sequence\":1},\"id\":\"prediction-60314968-9147-1\",\"relationships\":{\"route\":{\"data\":{\"id\":\"134\",\"type\":\"route\"}},\"stop\":{\"data\":{\"id\":\"9147\",\"type\":\"stop\"}},\"trip\":{\"data\":{\"id\":\"60314968\",\"type\":\"trip\"}},\"vehicle\":{\"data\":null}},\"type\":\"prediction\"},{\"attributes\":{\"arrival_time\":null,\"arrival_uncertainty\":null,\"departure_time\":\"2024-03-14T14:25:00-04:00\",\"departure_uncertainty\":null,\"direction_id\":1,\"revenue\":\"REVENUE\",\"schedule_relationship\":null,\"status\":null,\"stop_sequence\":1},\"id\":\"prediction-60314952-9147-1\",\"relationships\":{\"route\":{\"data\":{\"id\":\"134\",\"type\":\"route\"}},\"stop\":{\"data\":{\"id\":\"9147\",\"type\":\"stop\"}},\"trip\":{\"data\":{\"id\":\"60314952\",\"type\":\"trip\"}},\"vehicle\":{\"data\":{\"id\":\"y2022\",\"type\":\"vehicle\"}}},\"type\":\"prediction\"},{\"attributes\":{\"arrival_time\":\"2024-03-14T14:27:41-04:00\",\"arrival_uncertainty\":null,\"departure_time\":\"2024-03-14T14:27:41-04:00\",\"departure_uncertainty\":null,\"direction_id\":1,\"revenue\":\"REVENUE\",\"schedule_relationship\":null,\"status\":null,\"stop_sequence\":43},\"id\":\"prediction-60312563-9147-43\",\"relationships\":{\"route\":{\"data\":{\"id\":\"134\",\"type\":\"route\"}},\"stop\":{\"data\":{\"id\":\"9147\",\"type\":\"stop\"}},\"trip\":{\"data\":{\"id\":\"60312563\",\"type\":\"trip\"}},\"vehicle\":{\"data\":{\"id\":\"y2006\",\"type\":\"vehicle\"}}},\"type\":\"prediction\"},{\"attributes\":{\"arrival_time\":\"2024-03-14T15:34:43-04:00\",\"arrival_uncertainty\":null,\"departure_time\":\"2024-03-14T15:34:43-04:00\",\"departure_uncertainty\":null,\"direction_id\":1,\"revenue\":\"REVENUE\",\"schedule_relationship\":null,\"status\":null,\"stop_sequence\":43},\"id\":\"prediction-60314891-9147-43\",\"relationships\":{\"route\":{\"data\":{\"id\":\"134\",\"type\":\"route\"}},\"stop\":{\"data\":{\"id\":\"9147\",\"type\":\"stop\"}},\"trip\":{\"data\":{\"id\":\"60314891\",\"type\":\"trip\"}},\"vehicle\":{\"data\":{\"id\":\"y0875\",\"type\":\"vehicle\"}}},\"type\":\"prediction\"}],\"included\":[{\"attributes\":{\"bikes_allowed\":1,\"block_id\":\"G134-180\",\"direction_id\":1,\"headsign\":\"Wellington\",\"name\":\"\",\"revenue\":\"REVENUE\",\"wheelchair_accessible\":1},\"id\":\"60312563\",\"links\":{\"self\":\"/trips/60312563\"},\"relationships\":{\"route\":{\"data\":{\"id\":\"134\",\"type\":\"route\"}},\"route_pattern\":{\"data\":{\"id\":\"134-3-1\",\"type\":\"route_pattern\"}},\"service\":{\"data\":{\"id\":\"WinterWeekday\",\"type\":\"service\"}},\"shape\":{\"data\":{\"id\":\"1340357\",\"type\":\"shape\"}}},\"type\":\"trip\"},{\"attributes\":{\"bikes_allowed\":1,\"block_id\":\"F134-78\",\"direction_id\":1,\"headsign\":\"Wellington\",\"name\":\"\",\"revenue\":\"REVENUE\",\"wheelchair_accessible\":1},\"id\":\"60314891\",\"links\":{\"self\":\"/trips/60314891\"},\"relationships\":{\"route\":{\"data\":{\"id\":\"134\",\"type\":\"route\"}},\"route_pattern\":{\"data\":{\"id\":\"134-3-1\",\"type\":\"route_pattern\"}},\"service\":{\"data\":{\"id\":\"WinterWeekday\",\"type\":\"service\"}},\"shape\":{\"data\":{\"id\":\"1340357\",\"type\":\"shape\"}}},\"type\":\"trip\"},{\"attributes\":{\"bikes_allowed\":1,\"block_id\":\"F100-27\",\"direction_id\":1,\"headsign\":\"MiddlesexAve&SecondSt\",\"name\":\"\",\"revenue\":\"REVENUE\",\"wheelchair_accessible\":1},\"id\":\"60314952\",\"links\":{\"self\":\"/trips/60314952\"},\"relationships\":{\"route\":{\"data\":{\"id\":\"134\",\"type\":\"route\"}},\"route_pattern\":{\"data\":{\"id\":\"134-4-1\",\"type\":\"route_pattern\"}},\"service\":{\"data\":{\"id\":\"WinterWeekday\",\"type\":\"service\"}},\"shape\":{\"data\":{\"id\":\"1340351\",\"type\":\"shape\"}}},\"type\":\"trip\"},{\"attributes\":{\"bikes_allowed\":1,\"block_id\":\"F131-72\",\"direction_id\":1,\"headsign\":\"MiddlesexAve&SecondSt\",\"name\":\"\",\"revenue\":\"REVENUE\",\"wheelchair_accessible\":1},\"id\":\"60314968\",\"links\":{\"self\":\"/trips/60314968\"},\"relationships\":{\"route\":{\"data\":{\"id\":\"134\",\"type\":\"route\"}},\"route_pattern\":{\"data\":{\"id\":\"134-4-1\",\"type\":\"route_pattern\"}},\"service\":{\"data\":{\"id\":\"WinterWeekday\",\"type\":\"service\"}},\"shape\":{\"data\":{\"id\":\"1340351\",\"type\":\"shape\"}}},\"type\":\"trip\"},{\"attributes\":{\"bikes_allowed\":1,\"block_id\":\"F137-91\",\"direction_id\":1,\"headsign\":\"MiddlesexAve&SecondSt\",\"name\":\"\",\"revenue\":\"REVENUE\",\"wheelchair_accessible\":1},\"id\":\"60314982\",\"links\":{\"self\":\"/trips/60314982\"},\"relationships\":{\"route\":{\"data\":{\"id\":\"134\",\"type\":\"route\"}},\"route_pattern\":{\"data\":{\"id\":\"134-4-1\",\"type\":\"route_pattern\"}},\"service\":{\"data\":{\"id\":\"WinterWeekday\",\"type\":\"service\"}},\"shape\":{\"data\":{\"id\":\"1340351\",\"type\":\"shape\"}}},\"type\":\"trip\"},{\"attributes\":{\"address\":null,\"at_street\":\"IvyRoad\",\"description\":null,\"latitude\":42.42737,\"location_type\":0,\"longitude\":-71.12592,\"municipality\":\"Medford\",\"name\":\"WinthropSt@BrooksSt-MedfordHS\",\"on_street\":\"WinthropStreet\",\"platform_code\":null,\"platform_name\":null,\"vehicle_type\":3,\"wheelchair_boarding\":1},\"id\":\"9147\",\"links\":{\"self\":\"/stops/9147\"},\"relationships\":{\"facilities\":{\"links\":{\"related\":\"/facilities/?filter[stop]=9147\"}},\"parent_station\":{\"data\":null},\"zone\":{\"data\":{\"id\":\"LocalBus\",\"type\":\"zone\"}}},\"type\":\"stop\"}],\"jsonapi\":{\"version\":\"1.0\"}}";
 
-const char* ssid = "TP-Link_51CA";
+//const char* ssid = "TP-Link_51CA";
+const char* ssid = "EngineeringSubNet";
 const char* password = "password";
 //const char* ssid = "timesink2";
 //const char* password = "sweetpotato";
 
 // Setting up local time
 #define EST -18000
-#define EDT_OFFSET 1
+#define EDT -14400
+//#define EDT_OFFSET 1
 const long utcOffsetInSeconds = EST;
-bool dst_state = true;
-uint8_t est_state = NOTSET;
+bool dst_state = false;
+//uint8_t dst_state = NOTSET;
 
 // URL and key for mbta api server
 String api_url = "https://api-v3.mbta.com/predictions?filter[stop]=9147&filter[route]=134&include=stop,trip";
@@ -94,7 +95,7 @@ Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(7, 7, PIXEL_PIN,
 //String formattedDate;
 // Global time variables displayed on web server
 uint8_t hrs, mns, scs;
-bool daylightsavings = false;
+//bool daylightsavings = false;
 //int16_t arrival_minutes[5];
 int32_t bus_time_id[MAXNUM_BUSES][2];
 int32_t bus_head_id[MAXNUM_BUSES];
@@ -143,7 +144,7 @@ void loop() {
   mns = timeClient.getMinutes();
   scs = timeClient.getSeconds();
 
-    // Day of week, month and day
+  // Day of week, month and day
   uint8_t dayofweek = timeClient.getDay();
   String formattedDate = timeClient.getFormattedDate();
   uint8_t splitDash = formattedDate.indexOf("-") + 1;
@@ -154,29 +155,25 @@ void loop() {
   uint8_t month = mnt.toInt();
   uint8_t day = dte.toInt();
 
-
   uint8_t previousSunday = day - dayofweek;
 
   if (((month > MAR) && (month < NOV)) || ((month == MAR) && (previousSunday >= MAGIC_NUMBER)) || ((month == MAR) && (day > WEEK * 2)) || ((month == NOV) && (previousSunday < 1))) {
-    if (est_state == true)  {
+    if (dst_state == true) {
       timeClient.setTimeOffset(EDT);
-      est_state = false;
+      dst_state = false;
     }
-}
-else {
-  if (est_state == false)  {
-    timeClient.setTimeOffset(EST);
-    est_state = true;
+  } else {
+    if (dst_state == false) {
+      timeClient.setTimeOffset(EST);
+      dst_state = true;
+    }
   }
-}
-
-
-  if (dst_state == true) hrs += EDT_OFFSET;
+  // if (dst_state == true) hrs += EDT_OFFSET;
 
   uint16_t now_minutes = total_minutes(hrs, mns);
 
-  String formattedDate = timeClient.getFormattedDate();
-  Serial.println(formattedDate);
+  // String formattedDate = timeClient.getFormattedDate();
+  //Serial.println(formattedDate);
 
   WiFiClientSecure client;
   client.setCACert(rootCACertificate);
@@ -235,7 +232,7 @@ else {
                 // Gets length of text display
                 for (len = 0; textdisplay[len] != '\0'; len++)
                   ;
-                
+
                 // Prints text display on matrix
                 for (int16_t x = matrix.width(); x > -(len * 6); x--) {
                   //for (int16_t x = 34; x > 0; x--) {
